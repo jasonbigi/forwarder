@@ -1,0 +1,197 @@
+<form>
+  <label>AD稽核原則變更</label>
+  <fieldset submitButton="false"></fieldset>
+  <row>
+    <panel>
+      <title>稽核稽核原則變更</title>
+      <input type="time" token="time1">
+        <label>時間範圍</label>
+        <default>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </default>
+      </input>
+      <input type="text" token="src_zone2">
+        <label>來源網域</label>
+        <choice value="*">*</choice>
+        <default>*</default>
+        <initialValue>*</initialValue>
+        <fieldForLabel>src_zone2</fieldForLabel>
+        <fieldForValue>src_zone2</fieldForValue>
+      </input>
+      <input type="text" token="src_host">
+        <label>來源電腦</label>
+        <choice value="*">*</choice>
+        <fieldForLabel>src_host</fieldForLabel>
+        <fieldForValue>src_host</fieldForValue>
+        <default>*</default>
+        <initialValue>*</initialValue>
+      </input>
+      <input type="dropdown" token="message">
+        <label>事件名稱</label>
+        <choice value="*">ALL</choice>
+        <default>*</default>
+        <initialValue>*</initialValue>
+        <fieldForLabel>message</fieldForLabel>
+        <fieldForValue>message</fieldForValue>
+        <search>
+          <query>index=*msad raw_event_id= 4715 OR raw_event_id=4719 OR raw_event_id=4902 OR raw_event_id=4904 OR raw_event_id=4905 OR raw_event_id=4906 OR raw_event_id=4907 OR raw_event_id=4912 earliest=$time1.earliest$ latest=$time1.latest$
+| rex field=_raw "\s變更\:\s\s(?&lt;change&gt;[^\d]*)" | rex field=_raw "子類別\:\s\s(?&lt;subcategory&gt;[^\d]*)\s\s子" |rex field=_raw "類別\:\s\s(?&lt;category&gt;[^\d]*)\s\s子類別:"
+| eval message=raw_event_id."：".signature 
+|table message
+|dedup message</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+      </input>
+      <input type="dropdown" token="category">
+        <label>類別</label>
+        <choice value="*">ALL</choice>
+        <default>*</default>
+        <initialValue>*</initialValue>
+        <fieldForLabel>category</fieldForLabel>
+        <fieldForValue>category</fieldForValue>
+        <search>
+          <query>index=*msad raw_event_id= 4715 OR raw_event_id=4719 OR raw_event_id=4902 OR raw_event_id=4904 OR raw_event_id=4905 OR raw_event_id=4906 OR raw_event_id=4907 OR raw_event_id=4912 
+earliest=$time1.earliest$ latest=$time1.latest$
+| rex field=_raw "\s變更\:\s\s(?&lt;change&gt;[^\d]*)" | rex field=_raw "子類別\:\s\s(?&lt;subcategory&gt;[^\d]*)\s\s子" |rex field=_raw "類別\:\s\s(?&lt;category&gt;[^\d]*)\s\s子類別:"
+| eval message=raw_event_id."：".signature 
+|table category
+|dedup category</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+      </input>
+      <input type="dropdown" token="subcategory">
+        <label>子類別</label>
+        <choice value="*">ALL</choice>
+        <default>*</default>
+        <initialValue>*</initialValue>
+        <fieldForLabel>subcategory</fieldForLabel>
+        <fieldForValue>subcategory</fieldForValue>
+        <search>
+          <query>index=*msad raw_event_id= 4715 OR raw_event_id=4719 OR raw_event_id=4902 OR raw_event_id=4904 OR raw_event_id=4905 OR raw_event_id=4906 OR raw_event_id=4907 OR raw_event_id=4912 earliest=$time1.earliest$ latest=$time1.latest$ 
+| rex field=_raw "\s變更\:\s\s(?&lt;change&gt;[^\d]*)" | rex field=_raw "子類別\:\s\s(?&lt;subcategory&gt;[^\d]*)\s\s子" |rex field=_raw "類別\:\s\s(?&lt;category&gt;[^\d]*)\s\s子類別:"
+| eval message=raw_event_id."：".signature 
+|search category="$category$"
+|table subcategory
+|dedup subcategory</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+      </input>
+      <table>
+        <search>
+          <query>index=*msad raw_event_id= 4715 OR raw_event_id=4719 OR raw_event_id=4902 OR raw_event_id=4904 OR raw_event_id=4905 OR raw_event_id=4906 OR raw_event_id=4907 OR raw_event_id=4912  
+| rex field=_raw "\s變更\:\s\s(?&lt;change&gt;[^\d]*)" | rex field=_raw "子類別\:\s\s(?&lt;subcategory&gt;[^\d]*)\s\s子" |rex field=_raw "類別\:\s\s(?&lt;category&gt;[^\d]*)\s\s子類別:"
+| eval message=raw_event_id."：".signature 
+| fillnull value=N/A
+| search src_zone2=$src_zone2$ AND src_host=$src_host$ AND message="$message$" AND category="$category$" AND subcategory="$subcategory$" 
+|table _time src_zone2 src_host message category subcategory change
+|rename src_zone2 as "來源網域" src_host as "來源電腦" message as "事件名稱" category as "類別" subcategory as "子類別" change as "變更"</query>
+          <earliest>$time1.earliest$</earliest>
+          <latest>$time1.latest$</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">cell</option>
+        <option name="percentagesRow">false</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>稽核驗證原則變更</title>
+      <input type="time" token="time2">
+        <label>時間範圍</label>
+        <default>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </default>
+      </input>
+      <input type="text" token="src_zone">
+        <label>來源網域</label>
+        <default>*</default>
+        <initialValue>*</initialValue>
+      </input>
+      <input type="text" token="src_user">
+        <label>來源帳戶</label>
+        <default>*</default>
+        <initialValue>*</initialValue>
+      </input>
+      <input type="dropdown" token="message2">
+        <label>事件名稱</label>
+        <choice value="*">ALL</choice>
+        <default>*</default>
+        <fieldForLabel>message</fieldForLabel>
+        <fieldForValue>message</fieldForValue>
+        <search>
+          <query>index=*msad  raw_event_id= 4706 OR raw_event_id=4707 OR raw_event_id=4713 OR raw_event_id=4716 OR raw_event_id=4717 OR raw_event_id=4718 OR raw_event_id=4865 OR raw_event_id=4866 OR raw_event_id=4867 
+earliest=$time2.earliest$ latest=$time2.latest$ 
+| rex field=_raw "帳戶名稱:\s\s(?&lt;src_user&gt;.*?)\s\s"   |rex field=_raw "帳戶網域:\s\s(?&lt;src_zone&gt;.*?)\s\s"
+| eval message=raw_event_id."：".signature
+| dedup message
+| table message</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+      </input>
+      <table>
+        <search>
+          <query>index=*msad  raw_event_id= 4706 OR raw_event_id=4707 OR raw_event_id=4713 OR raw_event_id=4716 OR raw_event_id=4717 OR raw_event_id=4718 OR raw_event_id=4865 OR raw_event_id=4866 OR raw_event_id=4867 
+| rex field=_raw "帳戶名稱:\s\s(?&lt;src_user&gt;.*?)\s\s"   |rex field=_raw "帳戶網域:\s\s(?&lt;src_zone&gt;.*?)\s\s"
+| eval message=raw_event_id."：".signature
+| search src_zone="$src_zone$" AND src_user="$src_user$" AND message="$message2$"
+|table _time src_zone src_user message 
+|rename src_zone as "來源網域" src_user as "來源帳戶" message as "事件名稱"</query>
+          <earliest>$time2.earliest$</earliest>
+          <latest>$time2.latest$</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="count">100</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">cell</option>
+        <option name="percentagesRow">false</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>稽核授權原則變更</title>
+      <input type="time" token="time3">
+        <label>時間範圍</label>
+        <default>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </default>
+      </input>
+      <table>
+        <search>
+          <query>index=*msad  raw_event_id= 4704 OR raw_event_id=4705 OR raw_event_id=4714 
+| eval message=raw_event_id."：".signature 
+|table _time src_zone2 src_host message 
+|rename src_zone2 as "來源網域" src_host as "來源電腦" message as "事件名稱"</query>
+          <earliest>$time3.earliest$</earliest>
+          <latest>$time3.latest$</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="count">100</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">cell</option>
+        <option name="percentagesRow">false</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+</form>

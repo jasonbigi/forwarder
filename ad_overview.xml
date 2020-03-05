@@ -1,0 +1,261 @@
+<form>
+  <label>OS登出入分析</label>
+  <fieldset submitButton="false">
+    <input type="dropdown" token="index">
+      <label>作業系統</label>
+      <choice value="*msad">Windows &amp; AD</choice>
+      <choice value="*linux">Linux &amp; AIX</choice>
+      <default>*msad</default>
+      <initialValue>*msad</initialValue>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <title>TOP 10 登入失敗使用者帳號</title>
+      <input type="time" token="field1">
+        <label></label>
+        <default>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </default>
+      </input>
+      <chart>
+        <search>
+          <query>index=$index$ tag=os src_user!=*$ (raw_event_id=4625 OR raw_event_id=529 OR raw_event_id=530 OR raw_event_id=531 OR raw_event_id=532 OR raw_event_id=533 OR raw_event_id=534 OR raw_event_id=535 OR raw_event_id=536 OR raw_event_id=537 OR raw_event_id=539 )  
+| append 
+    [ search index=$index$ tag=unix tag=authentication action=failure 
+    | rename user as src_user ] 
+| stats count by src_user 
+| sort 10 - count 
+| rename src_user as "帳戶" 
+| rename count as "次數"</query>
+          <earliest>$field1.earliest$</earliest>
+          <latest>$field1.latest$</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.visibility">visible</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.abbreviation">none</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.abbreviation">none</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.abbreviation">none</option>
+        <option name="charting.axisY2.enabled">0</option>
+        <option name="charting.axisY2.scale">inherit</option>
+        <option name="charting.chart">bar</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">gaps</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">default</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.drilldown">all</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.mode">standard</option>
+        <option name="charting.legend.placement">right</option>
+        <option name="charting.lineWidth">2</option>
+        <option name="height">386</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="trellis.enabled">0</option>
+        <option name="trellis.scales.shared">1</option>
+        <option name="trellis.size">medium</option>
+      </chart>
+    </panel>
+    <panel>
+      <title>TOP 10 登入失敗使用者帳號連線之主機</title>
+      <table>
+        <search>
+          <query>index=$index$ tag=os src_user!=*$ (raw_event_id=4625 OR raw_event_id=529 OR raw_event_id=530 OR raw_event_id=531 OR raw_event_id=532 OR raw_event_id=533 OR raw_event_id=534 OR raw_event_id=535 OR raw_event_id=536 OR raw_event_id=537 OR raw_event_id=539 )  
+| append 
+    [ search index=$index$ tag=unix tag=authentication action=failure 
+    | rename dest as computer_name, user as src_user ] 
+| chart count over src_user by computer_name usenull=f 
+| addtotals 
+| eval Total=if(match(src_user,"^\d+$"),Total-src_user,Total) 
+| sort 10 - Total 
+| fields - Total 
+| rename src_user as "帳戶"</query>
+          <earliest>$field1.earliest$</earliest>
+          <latest>$field1.latest$</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="count">20</option>
+        <option name="dataOverlayMode">heatmap</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>TOP 10 登入失敗主機:</title>
+      <input type="time" token="field3">
+        <label></label>
+        <default>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </default>
+      </input>
+      <chart>
+        <search>
+          <query>index=*msad tag=os src_user!=*$ (raw_event_id=4625 OR raw_event_id=529 OR raw_event_id=530 OR raw_event_id=531 OR raw_event_id=532 OR raw_event_id=533 OR raw_event_id=534 OR raw_event_id=535 OR raw_event_id=536 OR raw_event_id=537 OR raw_event_id=539 ) 
+| append 
+    [ search index=$index$ tag=unix tag=authentication action=failure 
+    | rename dest as computer_name ] 
+| stats count by computer_name 
+| sort 10 - count 
+| rename computer_name as "主機" 
+| rename count as "次數"</query>
+          <earliest>$field3.earliest$</earliest>
+          <latest>$field3.latest$</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.visibility">visible</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.abbreviation">none</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.abbreviation">none</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.abbreviation">none</option>
+        <option name="charting.axisY2.enabled">0</option>
+        <option name="charting.axisY2.scale">inherit</option>
+        <option name="charting.chart">bar</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">gaps</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">default</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.mode">standard</option>
+        <option name="charting.legend.placement">right</option>
+        <option name="charting.lineWidth">2</option>
+        <option name="height">364</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="trellis.enabled">0</option>
+        <option name="trellis.scales.shared">1</option>
+        <option name="trellis.size">medium</option>
+      </chart>
+    </panel>
+    <panel>
+      <title>TOP 10 登入失敗主機之使用者帳號</title>
+      <table>
+        <title>*同台主機有超過三個以上使用者登入失敗，只會列出登入失敗次數最多的前三個使用者</title>
+        <search>
+          <query>index=*$index$ tag=os src_user!=*$ (raw_event_id=4625 OR raw_event_id=529 OR raw_event_id=530 OR raw_event_id=531 OR raw_event_id=532 OR raw_event_id=533 OR raw_event_id=534 OR raw_event_id=535 OR raw_event_id=536 OR raw_event_id=537 OR raw_event_id=539 )  
+| append 
+    [ search index=$index$ tag=unix tag=authentication action=failure 
+    | rename dest as computer_name, user as src_user ] 
+| table computer_name src_user 
+| top 3 src_user by computer_name showperc=f 
+| appendpipe 
+    [| stats count as total_count by computer_name ] 
+| eval conn=src_user." -&gt; ".count." 次" 
+| sort computer_name - count 
+| stats values(conn), values(total_count) by computer_name 
+| sort 10 - values(total_count) 
+| fields - values(total_count) 
+| rename computer_name as "主機", values(conn) as "登入失敗之帳號及次數"</query>
+          <earliest>$field3.earliest$</earliest>
+          <latest>$field3.latest$</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="count">20</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>登入失敗使用者帳號頻率查詢</title>
+      <input type="time" token="field4">
+        <label></label>
+        <default>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </default>
+      </input>
+      <input type="text" token="src_user">
+        <label>帳號</label>
+        <default>*</default>
+      </input>
+      <viz type="punchcard_app.punchcard">
+        <search>
+          <query>index=$index$ src_user=$src_user$ tag=os src_user!=*$ (raw_event_id=4625 OR raw_event_id=529 OR raw_event_id=530 OR raw_event_id=531 OR raw_event_id=532 OR raw_event_id=533 OR raw_event_id=534 OR raw_event_id=535 OR raw_event_id=536 OR raw_event_id=537 OR raw_event_id=539 )  
+| append 
+    [ search index=$index$ src_user=$src_user$  tag=unix tag=authentication action=failure 
+    | rename user as src_user ] 
+|eval mytime=strftime(_time,"%Y-%m-%d %H:%M:%S.%Q")
+|rex field=mytime "\d+-\d+-\d+ (?&lt;date_hour&gt;\d+).+"
+| stats count by date_hour src_user 
+| sort 10 - count 
+| rename src_user as "帳戶" 
+| rename count as "次數"</query>
+          <earliest>$field4.earliest$</earliest>
+          <latest>$field4.latest$</latest>
+        </search>
+        <option name="drilldown">all</option>
+        <option name="refresh.display">progressbar</option>
+      </viz>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>登入失敗電腦名稱頻率查詢</title>
+      <input type="time" token="field5">
+        <label></label>
+        <default>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </default>
+      </input>
+      <input type="text" token="computer_name">
+        <label>電腦名稱</label>
+        <default>*</default>
+      </input>
+      <viz type="punchcard_app.punchcard">
+        <search>
+          <query>index=$index$ computer_name=$computer_name$ tag=os src_user!=*$ (raw_event_id=4625 OR raw_event_id=529 OR raw_event_id=530 OR raw_event_id=531 OR raw_event_id=532 OR raw_event_id=533 OR raw_event_id=534 OR raw_event_id=535 OR raw_event_id=536 OR raw_event_id=537 OR raw_event_id=539 )  
+| append 
+    [ search index=$index$ computer_name=$computer_name$  tag=unix tag=authentication action=failure 
+    | rename user as src_user ] 
+|eval mytime=strftime(_time,"%Y-%m-%d %H:%M:%S.%Q")
+|rex field=mytime "\d+-\d+-\d+ (?&lt;date_hour&gt;\d+).+"
+| stats count by date_hour computer_name 
+| sort 10 - count 
+| rename computer_name as "電腦名稱" 
+| rename count as "次數"</query>
+          <earliest>$field5.earliest$</earliest>
+          <latest>$field5.latest$</latest>
+        </search>
+        <option name="drilldown">all</option>
+        <option name="refresh.display">progressbar</option>
+      </viz>
+    </panel>
+  </row>
+</form>
