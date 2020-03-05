@@ -1,0 +1,205 @@
+<form theme="light">
+  <label>OS 帳號登入失敗儀表版</label>
+  <fieldset submitButton="false" autoRun="true">
+    <input type="time" token="field1" searchWhenChanged="true">
+      <label>Timerange:</label>
+      <default>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+    <input type="dropdown" token="index">
+      <label>作業系統</label>
+      <choice value="*msad">Windows &amp; AD</choice>
+      <choice value="*linux">Linux &amp; AIX</choice>
+      <default>*msad</default>
+      <initialValue>*msad</initialValue>
+    </input>
+    <input type="text" token="src_user">
+      <label>Account</label>
+      <initialValue>*</initialValue>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <title>Top 10 ComputerName</title>
+      <chart>
+        <search>
+          <query>index=$index$ tag=os  src_user=$src_user$(raw_event_id=4625 OR raw_event_id=529 OR raw_event_id=530 OR raw_event_id=531 OR raw_event_id=532 OR raw_event_id=533 OR raw_event_id=534 OR raw_event_id=535 OR raw_event_id=536 OR raw_event_id=537 OR raw_event_id=539 ) src_user!=*$ 
+| append 
+    [ search index=$index$ tag=unix tag=authentication action=failure 
+    | rename dest as computer_name] 
+| stats count by computer_name 
+| sort - count 
+| head 10</query>
+          <earliest>$field1.earliest$</earliest>
+          <latest>$field1.latest$</latest>
+        </search>
+        <option name="charting.chart">bar</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+    <panel>
+      <title>Administrator Account Top 10 ComputerName</title>
+      <chart>
+        <search>
+          <query>index=$index$ tag=os src_user=$src_user$ (raw_event_id=4625 OR raw_event_id=529 OR raw_event_id=530 OR raw_event_id=531 OR raw_event_id=532 OR raw_event_id=533 OR raw_event_id=534 OR raw_event_id=535 OR raw_event_id=536 OR raw_event_id=537 OR raw_event_id=539 ) src_user!=*$ 安全性識別碼=*-500
+| append 
+    [ search index=$index$ tag=unix tag=authentication action=failure user=root OR user=all_admin 
+    | rename dest as computer_name] 
+| stats count by computer_name 
+| sort - count 
+| head 10</query>
+          <earliest>$field1.earliest$</earliest>
+          <latest>$field1.latest$</latest>
+        </search>
+        <option name="charting.chart">bar</option>
+        <option name="charting.drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Top 10 Account</title>
+      <chart>
+        <search>
+          <query>index=$index$ tag=os src_user=$src_user$ (raw_event_id=4625 OR raw_event_id=529 OR raw_event_id=530 OR raw_event_id=531 OR raw_event_id=532 OR raw_event_id=533 OR raw_event_id=534 OR raw_event_id=535 OR raw_event_id=536 OR raw_event_id=537 OR raw_event_id=539 ) src_user!=*$ 
+| append 
+    [ search index=$index$ tag=unix tag=authentication action=failure 
+    | rename user as src_user ] 
+| stats count by src_user 
+| sort - count 
+| head 10</query>
+          <earliest>$field1.earliest$</earliest>
+          <latest>$field1.latest$</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.visibility">visible</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.enabled">0</option>
+        <option name="charting.axisY2.scale">inherit</option>
+        <option name="charting.chart">bar</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">gaps</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">default</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.drilldown">all</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.placement">right</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+    <panel>
+      <title>Administrator Account Top 10 Account</title>
+      <chart>
+        <search>
+          <query>index=$index$ tag=os src_user=$src_user$ (raw_event_id=4625 OR raw_event_id=529 OR raw_event_id=530 OR raw_event_id=531 OR raw_event_id=532 OR raw_event_id=533 OR raw_event_id=534 OR raw_event_id=535 OR raw_event_id=536 OR raw_event_id=537 OR raw_event_id=539 ) src_user!=*$ 安全性識別碼=*-500
+| append 
+    [ search index=$index$ tag=unix tag=authentication action=failure user=root OR user=all_admin 
+    | rename user as src_user ] 
+| stats count by src_user 
+| sort - count 
+| head 10</query>
+          <earliest>$field1.earliest$</earliest>
+          <latest>$field1.latest$</latest>
+        </search>
+        <option name="charting.chart">bar</option>
+        <option name="charting.drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Top 10 Src IP</title>
+      <chart>
+        <search>
+          <query>index=$index$  tag=os src_user=$src_user$ (raw_event_id=4625 OR raw_event_id=529 OR raw_event_id=530 OR raw_event_id=531 OR raw_event_id=532 OR raw_event_id=533 OR raw_event_id=534 OR raw_event_id=535 OR raw_event_id=536 OR raw_event_id=537 OR raw_event_id=539 ) src_user!=*$ 
+| append 
+    [ search index=$index$ tag=unix tag=authentication action=failure ] 
+| stats count by src
+| sort - count 
+| head 10</query>
+          <earliest>$field1.earliest$</earliest>
+          <latest>$field1.latest$</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.enabled">0</option>
+        <option name="charting.axisY2.scale">inherit</option>
+        <option name="charting.chart">bar</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">gaps</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">default</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.drilldown">all</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.placement">right</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+    <panel>
+      <title>Administrator Account Top 10 SrcIP</title>
+      <chart>
+        <search>
+          <query>index=$index$ tag=os src_user=$src_user$ (raw_event_id=4625 OR raw_event_id=529 OR raw_event_id=530 OR raw_event_id=531 OR raw_event_id=532 OR raw_event_id=533 OR raw_event_id=534 OR raw_event_id=535 OR raw_event_id=536 OR raw_event_id=537 OR raw_event_id=539 ) src_user!=*$ 安全性識別碼=*-500
+| append 
+    [ search index=$index$ tag=unix tag=authentication action=failure user=root OR user=all_admin ] 
+| stats count by src 
+| sort - count 
+| head 10</query>
+          <earliest>$field1.earliest$</earliest>
+          <latest>$field1.latest$</latest>
+        </search>
+        <option name="charting.chart">bar</option>
+        <option name="charting.drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>單一使用者帳號3分鐘內登入失敗3次(含)以上</title>
+      <table>
+        <search>
+          <query>index=$index$ tag=os src_user=$src_user$(raw_event_id=4625 OR raw_event_id=529 OR raw_event_id=530 OR raw_event_id=531 OR raw_event_id=532 OR raw_event_id=533 OR raw_event_id=534 OR raw_event_id=535 OR raw_event_id=536 OR raw_event_id=537 OR raw_event_id=539 )  src_user!=*$ 
+| eval failure=raw_event_id.",".fail_reason 
+| append 
+    [ search index=$index$ tag=unix tag=authentication action=failure 
+    | rename dest as computer_name, user as src_user app as failure 
+    | eval dvc=host] 
+| bucket span=3m _time 
+| stats count by _time,src_user,src,computer_name,failure 
+| search count&gt;=3</query>
+          <earliest>$field1.earliest$</earliest>
+          <latest>$field1.latest$</latest>
+        </search>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+</form>

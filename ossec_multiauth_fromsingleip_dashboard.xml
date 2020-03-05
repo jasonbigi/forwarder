@@ -1,0 +1,163 @@
+<form script="OSSEC_MultiAuth_FromSingleIP.js" stylesheet="SIP:OSSEC_MultiAuth_FromSingleIP.css" theme="light">
+  <label>主機登出入驗證</label>
+  <search id="sankey_search">
+    <query>index=summary_som rule_category="SOC" should_alert=1 rule_no="009*" src_ip=$src_ip$ | table minT, event_time, rule_no, src_ip, dest_ip, event_count | makemv dest_ip | eval dest_ip=lower(dest_ip) | makemv dest_ip tokenizer="(.*@\d+)" | sort - _time | streamstats count as itemNo | eval itemNo=substr("0".itemNo, -2) | mvexpand dest_ip | eval dest_ip=split(dest_ip, "@") | eval count=mvindex(dest_ip, 1) | eval dest_ip=mvindex(dest_ip, 0) | eval event_time=if(isnull(event_time), minT, mvindex(event_time,0)) | eval src_ip=upper(src_ip) | eval dest_ip=upper(dest_ip) | eval src="(".itemNo."_".mvindex(event_time,0).") ".src_ip | stats sum(count) as sum by src dest_ip | sort src</query>
+    <earliest>$time_picker.earliest$</earliest>
+    <latest>$time_picker.latest$</latest>
+  </search>
+  <fieldset submitButton="false">
+    <input type="dropdown" token="index">
+      <label>作業系統</label>
+      <choice value="*msad">Windows &amp; AD</choice>
+      <choice value="*linux">Linux &amp; AIX</choice>
+      <default>*msad</default>
+      <initialValue>*msad</initialValue>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <title>AD首次登入主機成功儀表板</title>
+      <table>
+        <title>＊該帳號在該主機長時間未登入(最近3個月未登入)，但突然在今日成功登入之使用者 (Linux則是查看首次登入成功之來源IP)</title>
+        <search>
+          <query>index=*$index$ tag=os src_user!=*$ raw_event_id=4624 
+| stats first(_time) as login by src_user src_zone computer_name 
+| eval 登入時間=strftime(login,"%F,%H:%M") 
+| lookup logon.csv src_user computer_name OUTPUT login_time 
+| where isnull(login_time) 
+| fields - login_time login 
+| sort src src_zone computer_name 登入時間 
+| rename src as "來源IP" src_user as "帳號" computer_name as "主機" src_zone as "網域" login_time as "首次登入時間" 
+| head 20 
+| append 
+    [ search index=$index$ tag=unix tag=authentication action=success 
+    | stats first(_time) as login by src dest user app  
+    | eval 登入時間=strftime(login,"%F,%H:%M") 
+    | lookup logon_linux.csv src dest user OUTPUT login_time 
+    | where isnull(login_time) 
+    | fields - login_time login 
+    | sort src dest user 登入時間 
+    | rename src as "來源IP" user as "帳號" dest as "主機"  login_time as "首次登入時間" ]</query>
+          <earliest>@d</earliest>
+          <latest>now</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="count">20</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+        <format type="color" field="src">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="src_user">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="來源">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="主機ip">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="Computer_Name">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="帳號">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="主機">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="主機IP">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>OS近七日曾經在X分鐘內登入失敗X次以上使用者統計清單(門檻值可自調)_修改版本</title>
+      <input type="text" token="src_user" searchWhenChanged="true">
+        <label>帳號</label>
+        <default>*</default>
+        <initialValue>*</initialValue>
+      </input>
+      <input type="dropdown" token="spantime">
+        <label>在幾分鐘內</label>
+        <choice value="1m">1分鐘</choice>
+        <choice value="3m">3分鐘</choice>
+        <choice value="5m">5分鐘</choice>
+        <choice value="10m">10分鐘</choice>
+        <choice value="15m">15分鐘</choice>
+        <choice value="60m">60分鐘</choice>
+        <default>10m</default>
+        <initialValue>10m</initialValue>
+      </input>
+      <input type="dropdown" token="count">
+        <label>登入失敗超過幾次(含)以上</label>
+        <choice value="3">3次</choice>
+        <choice value="5">5次</choice>
+        <choice value="10">10次</choice>
+        <choice value="15">15次</choice>
+        <choice value="20">20次</choice>
+        <default>3</default>
+        <initialValue>3</initialValue>
+      </input>
+      <viz type="sankey_diagram_app.sankey_diagram">
+        <title>由左至右依序為:使用者帳號--&gt;登入失敗原因--&gt;主機名稱   *線越粗代表登入失敗次數越多</title>
+        <search>
+          <query>index=*msad tag=os src_user="$src_user$" src_user!=*$ src_user!="-" computer_name=* (raw_event_id=4625 OR raw_event_id=529 OR raw_event_id=530 OR raw_event_id=531 OR raw_event_id=532 OR raw_event_id=533 OR raw_event_id=534 OR raw_event_id=535 OR raw_event_id=536 OR raw_event_id=537 OR raw_event_id=539 ) 
+| eval fail_reason=coalesce(fail_reason,message) 
+| bucket _time span=$spantime$
+| stats count by _time src_user fail_reason computer_name
+| search count&gt;=$count$
+|stats sum(count) as count by  src_user fail_reason computer_name
+| appendpipe 
+    [ stats sum(count) by src_user fail_reason 
+    | rename src_user as source , fail_reason as target] 
+| appendpipe 
+    [ stats sum(count) by fail_reason computer_name
+    | rename fail_reason as source, computer_name as target] 
+| search source=* 
+| fields source target sum(count)</query>
+          <earliest>-7d</earliest>
+          <latest>now</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </viz>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <search>
+          <query>index=$index$ tag=os src_user=$src_user$ src_user!=*$ (raw_event_id=4625 OR raw_event_id=529 OR raw_event_id=530 OR raw_event_id=531 OR raw_event_id=532 OR raw_event_id=533 OR raw_event_id=534 OR raw_event_id=535 OR raw_event_id=536 OR raw_event_id=537 OR raw_event_id=539) 
+| eval fail_reason=coalesce(fail_reason,message) 
+| stats count by raw_event_id, fail_reason, src_user, computer_name 
+| rename raw_event_id as 事件ID , fail_reason as 失敗原因  ,src_user as 登入帳號,computer_name as 使用者主機名稱 
+| sort - count 
+| append 
+    [ search index=$index$ tag=unix tag=authentication action=failure 
+    | stats count by src app user dest |rename src as 來源IP, user as 登入帳號, dest as 主機]</query>
+          <earliest>-7d@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+</form>

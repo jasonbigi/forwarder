@@ -1,0 +1,238 @@
+<form>
+  <label>防火牆紀錄月報</label>
+  <fieldset submitButton="false">
+    <input type="time" token="time_picker">
+      <label>時間區間</label>
+      <default>
+        <earliest>@mon</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+    <input type="dropdown" token="src_zone">
+      <label>Source Zone</label>
+      <choice value="*">ALL</choice>
+      <choice value="Internet">Internet</choice>
+      <choice value="Private">Private</choice>
+      <default>*</default>
+      <initialValue>*</initialValue>
+    </input>
+    <input type="dropdown" token="dest_zone">
+      <label>Destination Zone</label>
+      <choice value="*">ALL</choice>
+      <choice value="Internet">Internet</choice>
+      <choice value="Private">Private</choice>
+      <default>*</default>
+      <initialValue>*</initialValue>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <title>防火牆日誌紀錄數量趨勢 by 防火牆設備</title>
+      <chart>
+        <search>
+          <query>index=summary_som_fw 
+| lookup soc_ip_zone_lookup ip_cidr as src ,customer_name as customer_name OUTPUT ip_zone as src_ip_zone 
+| lookup soc_ip_zone_lookup ip_cidr as dest ,customer_name as customer_name OUTPUT ip_zone as dest_ip_zone 
+| eval src_ip_zone=case(isnotnull(src_ip_zone),src_ip_zone,isnull(src_ip_zone) AND cidrmatch("0.0.0.0/32",src),"Private",isnull(src_ip_zone) AND cidrmatch("10.0.0.0/8",src),"Private",isnull(src_ip_zone) AND cidrmatch("172.16.0.0/12",src),"Private",isnull(src_ip_zone) AND cidrmatch("192.168.0.0/16",src),"Private",isnull(src_ip_zone),"Internet") 
+| eval dest_ip_zone=case(isnotnull(dest_ip_zone),dest_ip_zone,isnull(dest_ip_zone) AND cidrmatch("0.0.0.0/32",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("10.0.0.0/8",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("172.16.0.0/12",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("192.168.0.0/16",dest),"Private",isnull(dest_ip_zone),"Internet")
+| search src_ip_zone=$src_zone$ AND dest_ip_zone=$dest_zone$
+| eval dest_ip_zone=case(isnotnull(dest_ip_zone),dest_ip_zone,isnull(dest_ip_zone) AND cidrmatch("0.0.0.0/32",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("10.0.0.0/8",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("172.16.0.0/12",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("192.168.0.0/16",dest),"Private",isnull(dest_ip_zone),"Internet")
+| timechart sum(raw_count) as count by dvc</query>
+          <earliest>$time_picker.earliest$</earliest>
+          <latest>$time_picker.latest$</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.visibility">visible</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.enabled">0</option>
+        <option name="charting.axisY2.scale">inherit</option>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">gaps</option>
+        <option name="charting.chart.showDataLabels">minmax</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">default</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.drilldown">all</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>防火牆日誌紀錄數量趨勢 by 嚴重等級</title>
+      <chart>
+        <search>
+          <query>index=summary_som_fw 
+| lookup soc_ip_zone_lookup ip_cidr as src ,customer_name as customer_name OUTPUT ip_zone as src_ip_zone 
+| lookup soc_ip_zone_lookup ip_cidr as dest ,customer_name as customer_name OUTPUT ip_zone as dest_ip_zone 
+| eval src_ip_zone=case(isnotnull(src_ip_zone),src_ip_zone,isnull(src_ip_zone) AND cidrmatch("0.0.0.0/32",src),"Private",isnull(src_ip_zone) AND cidrmatch("10.0.0.0/8",src),"Private",isnull(src_ip_zone) AND cidrmatch("172.16.0.0/12",src),"Private",isnull(src_ip_zone) AND cidrmatch("192.168.0.0/16",src),"Private",isnull(src_ip_zone),"Internet") 
+| eval dest_ip_zone=case(isnotnull(dest_ip_zone),dest_ip_zone,isnull(dest_ip_zone) AND cidrmatch("0.0.0.0/32",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("10.0.0.0/8",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("172.16.0.0/12",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("192.168.0.0/16",dest),"Private",isnull(dest_ip_zone),"Internet")
+| search src_ip_zone=$src_zone$ AND dest_ip_zone=$dest_zone$
+| eval dest_ip_zone=case(isnotnull(dest_ip_zone),dest_ip_zone,isnull(dest_ip_zone) AND cidrmatch("0.0.0.0/32",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("10.0.0.0/8",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("172.16.0.0/12",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("192.168.0.0/16",dest),"Private",isnull(dest_ip_zone),"Internet")
+| timechart sum(raw_count) as count usenull=false by severity 
+| addtotals</query>
+          <earliest>$time_picker.earliest$</earliest>
+          <latest>$time_picker.latest$</latest>
+        </search>
+        <option name="charting.axisY2.enabled">1</option>
+        <option name="charting.axisY2.scale">linear</option>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.overlayFields">Total</option>
+        <option name="charting.chart.showDataLabels">minmax</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>防火牆日誌紀錄前十大來源IP分布表</title>
+      <chart>
+        <search>
+          <query>index=summary_som_fw 
+| lookup soc_ip_zone_lookup ip_cidr as src ,customer_name as customer_name OUTPUT ip_zone as src_ip_zone 
+| lookup soc_ip_zone_lookup ip_cidr as dest ,customer_name as customer_name OUTPUT ip_zone as dest_ip_zone 
+| eval src_ip_zone=case(isnotnull(src_ip_zone),src_ip_zone,isnull(src_ip_zone) AND cidrmatch("0.0.0.0/32",src),"Private",isnull(src_ip_zone) AND cidrmatch("10.0.0.0/8",src),"Private",isnull(src_ip_zone) AND cidrmatch("172.16.0.0/12",src),"Private",isnull(src_ip_zone) AND cidrmatch("192.168.0.0/16",src),"Private",isnull(src_ip_zone),"Internet") 
+| eval dest_ip_zone=case(isnotnull(dest_ip_zone),dest_ip_zone,isnull(dest_ip_zone) AND cidrmatch("0.0.0.0/32",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("10.0.0.0/8",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("172.16.0.0/12",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("192.168.0.0/16",dest),"Private",isnull(dest_ip_zone),"Internet")
+| search src_ip_zone=$src_zone$ AND dest_ip_zone=$dest_zone$
+| eval dest_ip_zone=case(isnotnull(dest_ip_zone),dest_ip_zone,isnull(dest_ip_zone) AND cidrmatch("0.0.0.0/32",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("10.0.0.0/8",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("172.16.0.0/12",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("192.168.0.0/16",dest),"Private",isnull(dest_ip_zone),"Internet")
+| top src</query>
+          <earliest>$time_picker.earliest$</earliest>
+          <latest>$time_picker.latest$</latest>
+        </search>
+        <option name="charting.chart">pie</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+    <panel>
+      <title>防火牆日誌紀錄前十大目的IP分布表</title>
+      <chart>
+        <search>
+          <query>index=summary_som_fw 
+| lookup soc_ip_zone_lookup ip_cidr as src ,customer_name as customer_name OUTPUT ip_zone as src_ip_zone 
+| lookup soc_ip_zone_lookup ip_cidr as dest ,customer_name as customer_name OUTPUT ip_zone as dest_ip_zone 
+| eval src_ip_zone=case(isnotnull(src_ip_zone),src_ip_zone,isnull(src_ip_zone) AND cidrmatch("0.0.0.0/32",src),"Private",isnull(src_ip_zone) AND cidrmatch("10.0.0.0/8",src),"Private",isnull(src_ip_zone) AND cidrmatch("172.16.0.0/12",src),"Private",isnull(src_ip_zone) AND cidrmatch("192.168.0.0/16",src),"Private",isnull(src_ip_zone),"Internet") 
+| eval dest_ip_zone=case(isnotnull(dest_ip_zone),dest_ip_zone,isnull(dest_ip_zone) AND cidrmatch("0.0.0.0/32",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("10.0.0.0/8",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("172.16.0.0/12",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("192.168.0.0/16",dest),"Private",isnull(dest_ip_zone),"Internet")
+| search src_ip_zone=$src_zone$ AND dest_ip_zone=$dest_zone$
+| eval dest_ip_zone=case(isnotnull(dest_ip_zone),dest_ip_zone,isnull(dest_ip_zone) AND cidrmatch("0.0.0.0/32",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("10.0.0.0/8",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("172.16.0.0/12",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("192.168.0.0/16",dest),"Private",isnull(dest_ip_zone),"Internet")
+| top dest</query>
+          <earliest>-0mon@mon</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="charting.chart">pie</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>防火牆日誌紀錄DENY前十大來源IP分布表</title>
+      <chart>
+        <title>※Deny OR Block</title>
+        <search>
+          <query>index=summary_som_fw action="den*" OR action="block*" 
+| lookup soc_ip_zone_lookup ip_cidr as src ,customer_name as customer_name OUTPUT ip_zone as src_ip_zone 
+| lookup soc_ip_zone_lookup ip_cidr as dest ,customer_name as customer_name OUTPUT ip_zone as dest_ip_zone 
+| eval src_ip_zone=case(isnotnull(src_ip_zone),src_ip_zone,isnull(src_ip_zone) AND cidrmatch("0.0.0.0/32",src),"Private",isnull(src_ip_zone) AND cidrmatch("10.0.0.0/8",src),"Private",isnull(src_ip_zone) AND cidrmatch("172.16.0.0/12",src),"Private",isnull(src_ip_zone) AND cidrmatch("192.168.0.0/16",src),"Private",isnull(src_ip_zone),"Internet") 
+| eval dest_ip_zone=case(isnotnull(dest_ip_zone),dest_ip_zone,isnull(dest_ip_zone) AND cidrmatch("0.0.0.0/32",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("10.0.0.0/8",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("172.16.0.0/12",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("192.168.0.0/16",dest),"Private",isnull(dest_ip_zone),"Internet")
+| search src_ip_zone=$src_zone$ AND dest_ip_zone=$dest_zone$
+| eval dest_ip_zone=case(isnotnull(dest_ip_zone),dest_ip_zone,isnull(dest_ip_zone) AND cidrmatch("0.0.0.0/32",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("10.0.0.0/8",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("172.16.0.0/12",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("192.168.0.0/16",dest),"Private",isnull(dest_ip_zone),"Internet")
+| top src</query>
+          <earliest>$time_picker.earliest$</earliest>
+          <latest>$time_picker.latest$</latest>
+        </search>
+        <option name="charting.chart">pie</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+    <panel>
+      <title>防火牆日誌紀錄DENY前十大目的IP分布表</title>
+      <chart>
+        <title>※Deny OR Block</title>
+        <search>
+          <query>index=summary_som_fw action="den*" OR action="block*" 
+| lookup soc_ip_zone_lookup ip_cidr as src ,customer_name as customer_name OUTPUT ip_zone as src_ip_zone 
+| lookup soc_ip_zone_lookup ip_cidr as dest ,customer_name as customer_name OUTPUT ip_zone as dest_ip_zone 
+| eval src_ip_zone=case(isnotnull(src_ip_zone),src_ip_zone,isnull(src_ip_zone) AND cidrmatch("0.0.0.0/32",src),"Private",isnull(src_ip_zone) AND cidrmatch("10.0.0.0/8",src),"Private",isnull(src_ip_zone) AND cidrmatch("172.16.0.0/12",src),"Private",isnull(src_ip_zone) AND cidrmatch("192.168.0.0/16",src),"Private",isnull(src_ip_zone),"Internet") 
+| eval dest_ip_zone=case(isnotnull(dest_ip_zone),dest_ip_zone,isnull(dest_ip_zone) AND cidrmatch("0.0.0.0/32",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("10.0.0.0/8",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("172.16.0.0/12",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("192.168.0.0/16",dest),"Private",isnull(dest_ip_zone),"Internet")
+| search src_ip_zone=$src_zone$ AND dest_ip_zone=$dest_zone$
+| eval dest_ip_zone=case(isnotnull(dest_ip_zone),dest_ip_zone,isnull(dest_ip_zone) AND cidrmatch("0.0.0.0/32",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("10.0.0.0/8",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("172.16.0.0/12",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("192.168.0.0/16",dest),"Private",isnull(dest_ip_zone),"Internet")
+| top dest</query>
+          <earliest>@mon</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="charting.chart">pie</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>防火牆日誌紀錄前十大連線詳細資訊</title>
+      <table>
+        <search>
+          <query>index=summary_som_fw 
+| lookup soc_ip_zone_lookup ip_cidr as src ,customer_name as customer_name OUTPUT ip_zone as src_ip_zone 
+| lookup soc_ip_zone_lookup ip_cidr as dest ,customer_name as customer_name OUTPUT ip_zone as dest_ip_zone 
+| eval src_ip_zone=case(isnotnull(src_ip_zone),src_ip_zone,isnull(src_ip_zone) AND cidrmatch("0.0.0.0/32",src),"Private",isnull(src_ip_zone) AND cidrmatch("10.0.0.0/8",src),"Private",isnull(src_ip_zone) AND cidrmatch("172.16.0.0/12",src),"Private",isnull(src_ip_zone) AND cidrmatch("192.168.0.0/16",src),"Private",isnull(src_ip_zone),"Internet") 
+| eval dest_ip_zone=case(isnotnull(dest_ip_zone),dest_ip_zone,isnull(dest_ip_zone) AND cidrmatch("0.0.0.0/32",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("10.0.0.0/8",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("172.16.0.0/12",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("192.168.0.0/16",dest),"Private",isnull(dest_ip_zone),"Internet")
+| search src_ip_zone=$src_zone$ AND dest_ip_zone=$dest_zone$
+| eval dest_ip_zone=case(isnotnull(dest_ip_zone),dest_ip_zone,isnull(dest_ip_zone) AND cidrmatch("0.0.0.0/32",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("10.0.0.0/8",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("172.16.0.0/12",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("192.168.0.0/16",dest),"Private",isnull(dest_ip_zone),"Internet")
+| eval cDT=_time 
+| bucket cDT span=1d 
+| stats sum(raw_count) as count by cDT, src, dest, dest_port, action, severity, app 
+| eval conn="[".action."_".severity."_".app."] ".strftime(cDT, "%F")." ".src."-&gt;".dest.":".dest_port." (count=".count.")" 
+| stats sum(count) as sum, values(conn) as conn by src, dest 
+| sort 0 - sum 
+| streamstats count as rank 
+| where rank&lt;=10 
+| fields rank, src, dest, sum, conn</query>
+          <earliest>$time_picker.earliest$</earliest>
+          <latest>$time_picker.latest$</latest>
+        </search>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>防火牆日誌紀錄DENY前十大連線詳細資訊</title>
+      <table>
+        <title>※Deny OR Block</title>
+        <search>
+          <query>index=summary_som_fw action="den*" OR action="block*" | lookup soc_ip_zone_lookup ip_cidr as src ,customer_name as customer_name OUTPUT ip_zone as src_ip_zone 
+| lookup soc_ip_zone_lookup ip_cidr as dest ,customer_name as customer_name OUTPUT ip_zone as dest_ip_zone 
+| eval src_ip_zone=case(isnotnull(src_ip_zone),src_ip_zone,isnull(src_ip_zone) AND cidrmatch("0.0.0.0/32",src),"Private",isnull(src_ip_zone) AND cidrmatch("10.0.0.0/8",src),"Private",isnull(src_ip_zone) AND cidrmatch("172.16.0.0/12",src),"Private",isnull(src_ip_zone) AND cidrmatch("192.168.0.0/16",src),"Private",isnull(src_ip_zone),"Internet") 
+| eval dest_ip_zone=case(isnotnull(dest_ip_zone),dest_ip_zone,isnull(dest_ip_zone) AND cidrmatch("0.0.0.0/32",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("10.0.0.0/8",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("172.16.0.0/12",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("192.168.0.0/16",dest),"Private",isnull(dest_ip_zone),"Internet")
+| search src_ip_zone=$src_zone$ AND dest_ip_zone=$dest_zone$
+| eval cDT=_time 
+| bucket cDT span=1d 
+| stats sum(raw_count) as count by cDT, src, dest, dest_port, action, severity
+| eval conn="[".action."_".severity."] ".strftime(cDT, "%F")." ".src."-&gt;".dest.":".dest_port." (count=".count.")" 
+| stats sum(count) as sum, values(conn) as conn by src, dest 
+| sort 0 - sum 
+| streamstats count as rank 
+| where rank&lt;=10 
+| fields rank, src, dest, sum, conn</query>
+          <earliest>$time_picker.earliest$</earliest>
+          <latest>$time_picker.latest$</latest>
+        </search>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+</form>

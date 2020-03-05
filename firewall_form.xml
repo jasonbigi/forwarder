@@ -1,0 +1,98 @@
+<form>
+  <label>Firewall Log查詢</label>
+  <!-- define master search template; leave time unbounded so that the time input can be used -->
+  <fieldset submitButton="true" autoRun="true">
+    <input type="time">
+      <label></label>
+      <default>
+        <earliest>-4h@m</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+    <input type="dropdown" token="src_zone">
+      <label>Source Zone</label>
+      <choice value="*">ALL</choice>
+      <choice value="Internet">外部</choice>
+      <choice value="Private">內部</choice>
+      <default>*</default>
+      <initialValue>*</initialValue>
+    </input>
+    <input type="dropdown" token="dest_zone">
+      <label>Destination Zone</label>
+      <choice value="*">ALL</choice>
+      <choice value="Internet">外部</choice>
+      <choice value="Private">內部</choice>
+      <default>*</default>
+      <initialValue>*</initialValue>
+    </input>
+    <input type="text" token="dvc">
+      <label>Host</label>
+      <default>*</default>
+      <initialValue>*</initialValue>
+    </input>
+    <input type="text" token="action">
+      <label>Action</label>
+      <default>*</default>
+      <initialValue>*</initialValue>
+    </input>
+    <input type="text" token="src_ip">
+      <label>Source IP</label>
+      <default>*</default>
+      <initialValue>*</initialValue>
+    </input>
+    <input type="text" token="dest_ip">
+      <label>Destination IP</label>
+      <default>*</default>
+      <initialValue>*</initialValue>
+    </input>
+    <input type="text" token="src_port">
+      <label>Source Port</label>
+      <default>*</default>
+      <initialValue>*</initialValue>
+    </input>
+    <input type="text" token="dest_port">
+      <label>Dest Port</label>
+      <default>*</default>
+      <initialValue>*</initialValue>
+    </input>
+    <input type="text" token="severity">
+      <label>嚴重性</label>
+      <default>*</default>
+      <initialValue>*</initialValue>
+    </input>
+    <input type="dropdown" token="dedup">
+      <label>過濾重複值</label>
+      <choice value="count">不進行過濾</choice>
+      <choice value="src">來源IP</choice>
+      <choice value="dest">目的IP</choice>
+      <choice value="src_port">來源port</choice>
+      <choice value="dest_port">目的port</choice>
+      <default>count</default>
+      <initialValue>count</initialValue>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <!-- show results as a table -->
+      <table>
+        <title>Recent Firewall Events Matching Your Search Criteria</title>
+        <search>
+          <query>tag=fw dvc=$dvc$ action=$action$ src=$src_ip$ dest=$dest_ip$ src_port=$src_port$ dest_port=$dest_port$ severity=$severity$ 
+| lookup soc_ip_zone_lookup ip_cidr as src ,customer_name as customer_name OUTPUT ip_zone as src_ip_zone 
+| lookup soc_ip_zone_lookup ip_cidr as dest ,customer_name as customer_name OUTPUT ip_zone as dest_ip_zone 
+| eval src_ip_zone=case(isnotnull(src_ip_zone),src_ip_zone,isnull(src_ip_zone) AND cidrmatch("0.0.0.0/32",src),"Private",isnull(src_ip_zone) AND cidrmatch("10.0.0.0/8",src),"Private",isnull(src_ip_zone) AND cidrmatch("172.16.0.0/12",src),"Private",isnull(src_ip_zone) AND cidrmatch("192.168.0.0/16",src),"Private",isnull(src_ip_zone),"Internet") 
+| eval dest_ip_zone=case(isnotnull(dest_ip_zone),dest_ip_zone,isnull(dest_ip_zone) AND cidrmatch("0.0.0.0/32",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("10.0.0.0/8",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("172.16.0.0/12",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("192.168.0.0/16",dest),"Private",isnull(dest_ip_zone),"Internet") 
+| search src_ip_zone=$src_zone$ AND dest_ip_zone=$dest_zone$ 
+| eval dest_ip_zone=case(isnotnull(dest_ip_zone),dest_ip_zone,isnull(dest_ip_zone) AND cidrmatch("0.0.0.0/32",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("10.0.0.0/8",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("172.16.0.0/12",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("192.168.0.0/16",dest),"Private",isnull(dest_ip_zone),"Internet") 
+| streamstats count current=f 
+| dedup $dedup$ 
+| table _time host src src_port dest dest_port protocol severity action</query>
+          <earliest>$earliest$</earliest>
+          <latest>$latest$</latest>
+        </search>
+        <option name="count">50</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+</form>

@@ -1,0 +1,210 @@
+<form theme="light">
+  <label>RUNAS/SU登入作業成功報表</label>
+  <fieldset submitButton="false">
+    <input type="time" searchWhenChanged="true" token="field1">
+      <label></label>
+      <default>
+        <earliest>@d</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <title>Top 10 ComputerName</title>
+      <chart>
+        <search>
+          <query>index=som_appliance_os tag=privileged NOT (Message="*\Svchost.exe*" OR Message="*\winlogon.exe*" OR Message="*\lsaas.exe*" ) NOT 帳戶名稱=*$ NOT 帳戶名稱=system 
+| eval signature=if(isnull(signature),app,signature) 
+| eval ComputerName=if(isnull(ComputerName),dvc_nt_host,ComputerName)  
+| bucket span=10m _time 
+| rename 帳戶名稱 as act 
+| eval account=if(isnull(account),act,account) 
+| fillnull value=Null EventCode,signature,EventType
+| stats count by _time,account,dvc_nt_host,EventCode,signature,EventType,ComputerName 
+| search account!=" " 
+ | stats sum(count) as count by ComputerName 
+| sort - count
+| head 10</query>
+          <earliest>$field1.earliest$</earliest>
+          <latest>$field1.latest$</latest>
+        </search>
+        <option name="charting.chart">bar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Top 10 Account</title>
+      <chart>
+        <search>
+          <query>index=som_appliance_os tag=privileged NOT (Message="*\Svchost.exe*" OR Message="*\winlogon.exe*" OR Message="*\lsaas.exe*" ) NOT 帳戶名稱=*$ NOT 帳戶名稱=system 
+| eval signature=if(isnull(signature),app,signature) 
+| eval ComputerName=if(isnull(ComputerName),dvc_nt_host,ComputerName)  
+| bucket span=10m _time 
+| rename 帳戶名稱 as act 
+| eval account=if(isnull(account),act,account) 
+| fillnull value=Null EventCode,signature,EventType
+| stats count by _time,account,dvc_nt_host,EventCode,signature,EventType,ComputerName 
+| search account!=" " 
+| stats sum(count) as count by account|sort - count
+| head 10</query>
+          <earliest>$field1.earliest$</earliest>
+          <latest>$field1.latest$</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.visibility">visible</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.enabled">0</option>
+        <option name="charting.axisY2.scale">inherit</option>
+        <option name="charting.chart">bar</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">gaps</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">default</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.drilldown">all</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.placement">right</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+    <panel>
+      <title>Top 10 Host IP</title>
+      <chart>
+        <search>
+          <query>index=som_appliance_os tag=privileged NOT (Message="*\Svchost.exe*" OR Message="*\winlogon.exe*" OR Message="*\lsaas.exe*" ) NOT 帳戶名稱=*$ NOT 帳戶名稱=system 
+| eval signature=if(isnull(signature),app,signature) 
+| eval ComputerName=if(isnull(ComputerName),dvc_nt_host,ComputerName)  
+| bucket span=10m _time 
+| rename 帳戶名稱 as act 
+| eval account=if(isnull(account),act,account) 
+| fillnull value=Null EventCode,signature,EventType
+| stats count by _time,account,dvc_nt_host,EventCode,signature,EventType,ComputerName 
+| search account!=" " 
+| stats sum(count) as count by dvc_nt_host | sort - count
+| head 10</query>
+          <earliest>$field1.earliest$</earliest>
+          <latest>$field1.latest$</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.enabled">0</option>
+        <option name="charting.axisY2.scale">inherit</option>
+        <option name="charting.chart">bar</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">gaps</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">default</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.drilldown">all</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.placement">right</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>網域系統主機管理員帳號登入異常</title>
+      <table>
+        <title>網域Administrator使用者帳號於3分鐘內5次(含)以上提權成功</title>
+        <search>
+          <query>index=som_appliance_os tag=privileged NOT (Message="*\Svchost.exe*" OR Message="*\winlogon.exe*" OR Message="*\lsaas.exe*" ) NOT 帳戶名稱=*$ NOT 帳戶名稱=system 
+| eval signature=if(isnull(signature),app,signature) 
+| eval ComputerName=if(isnull(ComputerName),dvc_nt_host,ComputerName) 
+| bucket span=3m _time 
+| rename 帳戶名稱 as act 
+| eval account=if(isnull(account),act,account) 
+| fillnull value=Null EventCode,signature,EventType 
+| stats count by _time,account,dvc_nt_host,EventCode,signature,ComputerName 
+|rename dvc_nt_host as "Host IP"
+| search count&gt;=5 
+| search account!=" " 
+| sort - _time</query>
+          <earliest>$field1.earliest$</earliest>
+          <latest>$field1.latest$</latest>
+        </search>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>SWIFT主機系統管理員帳號登入異常</title>
+      <table>
+        <title>SWIFT主機之系統管理員Administrator帳號於3分鐘內5次(含)以上提權成功</title>
+        <search>
+          <query>index="SWIFT主機系統管理員帳號登入異常"</query>
+          <earliest>0</earliest>
+          <latest></latest>
+        </search>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>使用者帳號提權成功</title>
+      <table>
+        <search>
+          <query>index=som_appliance_os tag=privileged NOT (Message="*\Svchost.exe*" OR Message="*\winlogon.exe*" OR Message="*\lsaas.exe*" ) NOT 帳戶名稱=*$ NOT 帳戶名稱=system 
+| eval signature=if(isnull(signature),app,signature) 
+| eval ComputerName=if(isnull(ComputerName),dvc_nt_host,ComputerName)  
+| bucket span=10m _time 
+| rename 帳戶名稱 as act 
+| eval account=if(isnull(account),act,account) 
+| fillnull value=Null EventCode,signature,EventType
+| stats count by _time,account,dvc_nt_host,EventCode,signature,ComputerName 
+| search account!=" " 
+| sort - _time</query>
+          <earliest>$field1.earliest$</earliest>
+          <latest>$field1.latest$</latest>
+        </search>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>使用者帳號提權成功 (ATM)</title>
+      <table>
+        <search>
+          <query>index=som_appliance_os (tag=authentication OR tag=privileged) EventCode=4624 帳戶名稱!=system 帳戶名稱!=*$ ComputerName=ATM
+| bucket span=10m _time
+| rename 帳戶名稱 as account 
+| stats count by _time,account,dvc_nt_host,EventCode,signature,EventType,ComputerName 
+| eval account=if(mvindex(account,0)="-",mvindex(account,1),mvindex(account,0)) 
+| search account!=" " |sort - _time</query>
+          <earliest>$field1.earliest$</earliest>
+          <latest>$field1.latest$</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="count">20</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+</form>

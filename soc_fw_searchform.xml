@@ -1,0 +1,241 @@
+<form>
+  <label>防火牆異常連線查詢</label>
+  <fieldset submitButton="true" autoRun="true">
+    <input type="time" token="time_picker">
+      <label>日期時間</label>
+      <default>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+    <input type="dropdown" token="src_zone">
+      <label>Source Zone</label>
+      <choice value="*">ALL</choice>
+      <choice value="Internet">Internet</choice>
+      <choice value="Private">Private</choice>
+      <default>*</default>
+      <initialValue>*</initialValue>
+    </input>
+    <input type="dropdown" token="dest_zone">
+      <label>Destination Zone</label>
+      <choice value="*">ALL</choice>
+      <choice value="Internet">Internet</choice>
+      <choice value="Private">Private</choice>
+      <default>*</default>
+      <initialValue>*</initialValue>
+    </input>
+    <input type="text" token="src_ip" searchWhenChanged="false">
+      <label>來源IP</label>
+      <default>*</default>
+      <initialValue>*</initialValue>
+    </input>
+    <input type="text" token="dest_ip" searchWhenChanged="false">
+      <label>目的IP</label>
+      <default>*</default>
+      <initialValue>*</initialValue>
+    </input>
+    <input type="radio" token="action">
+      <label>Action</label>
+      <choice value="action=*">all</choice>
+      <choice value="action=&quot;allow*&quot; OR action=&quot;accept&quot;">allow</choice>
+      <choice value="action=den* OR action=block*">deny</choice>
+      <default>action=*</default>
+      <initialValue>action=*</initialValue>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <title>趨勢圖</title>
+      <chart>
+        <title>總連線次數 &amp; 不重複IP數(若輸入來源IP則計算目的IP數，反之亦然)</title>
+        <search>
+          <query>index=summary_som_fw src=$src_ip$ dest=$dest_ip$ $action$ 
+| lookup soc_ip_zone_lookup ip_cidr as src ,customer_name as customer_name OUTPUT ip_zone as src_ip_zone 
+| lookup soc_ip_zone_lookup ip_cidr as dest ,customer_name as customer_name OUTPUT ip_zone as dest_ip_zone 
+| eval src_ip_zone=case(isnotnull(src_ip_zone),src_ip_zone,isnull(src_ip_zone) AND cidrmatch("0.0.0.0/32",src),"Private",isnull(src_ip_zone) AND cidrmatch("10.0.0.0/8",src),"Private",isnull(src_ip_zone) AND cidrmatch("172.16.0.0/12",src),"Private",isnull(src_ip_zone) AND cidrmatch("192.168.0.0/16",src),"Private",isnull(src_ip_zone),"Internet") 
+| eval dest_ip_zone=case(isnotnull(dest_ip_zone),dest_ip_zone,isnull(dest_ip_zone) AND cidrmatch("0.0.0.0/32",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("10.0.0.0/8",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("172.16.0.0/12",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("192.168.0.0/16",dest),"Private",isnull(dest_ip_zone),"Internet")
+| search src_ip_zone=$src_zone$ AND dest_ip_zone=$dest_zone$
+| eval dest_ip_zone=case(isnotnull(dest_ip_zone),dest_ip_zone,isnull(dest_ip_zone) AND cidrmatch("0.0.0.0/32",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("10.0.0.0/8",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("172.16.0.0/12",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("192.168.0.0/16",dest),"Private",isnull(dest_ip_zone),"Internet")
+| eval g=if("$src_ip$"="*", src, dest) 
+| timechart sum(raw_count) as count, dc(g) as distinct_ip 
+| fillnull value=0</query>
+          <earliest>$time_picker.earliest$</earliest>
+          <latest>$time_picker.latest$</latest>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.visibility">visible</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.enabled">0</option>
+        <option name="charting.axisY2.scale">inherit</option>
+        <option name="charting.chart">line</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">gaps</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">default</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.drilldown">all</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.placement">right</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+      <chart>
+        <title>各反向IP之連線趨勢(若輸入來源IP則計算目的IP數，反之亦然)</title>
+        <search>
+          <query>index=summary_som_fw src=$src_ip$ dest=$dest_ip$ $action$ 
+| lookup soc_ip_zone_lookup ip_cidr as src ,customer_name as customer_name OUTPUT ip_zone as src_ip_zone 
+| lookup soc_ip_zone_lookup ip_cidr as dest ,customer_name as customer_name OUTPUT ip_zone as dest_ip_zone 
+| eval src_ip_zone=case(isnotnull(src_ip_zone),src_ip_zone,isnull(src_ip_zone) AND cidrmatch("0.0.0.0/32",src),"Private",isnull(src_ip_zone) AND cidrmatch("10.0.0.0/8",src),"Private",isnull(src_ip_zone) AND cidrmatch("172.16.0.0/12",src),"Private",isnull(src_ip_zone) AND cidrmatch("192.168.0.0/16",src),"Private",isnull(src_ip_zone),"Internet") 
+| eval dest_ip_zone=case(isnotnull(dest_ip_zone),dest_ip_zone,isnull(dest_ip_zone) AND cidrmatch("0.0.0.0/32",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("10.0.0.0/8",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("172.16.0.0/12",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("192.168.0.0/16",dest),"Private",isnull(dest_ip_zone),"Internet")
+| search src_ip_zone=$src_zone$ AND dest_ip_zone=$dest_zone$
+| eval dest_ip_zone=case(isnotnull(dest_ip_zone),dest_ip_zone,isnull(dest_ip_zone) AND cidrmatch("0.0.0.0/32",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("10.0.0.0/8",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("172.16.0.0/12",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("192.168.0.0/16",dest),"Private",isnull(dest_ip_zone),"Internet")
+| eval g=if("$src_ip$"="*", src, dest)."#".action 
+| timechart count as count by g useother=f 
+| fillnull value=0</query>
+          <earliest>$time_picker.earliest$</earliest>
+          <latest>$time_picker.latest$</latest>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.visibility">visible</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.enabled">0</option>
+        <option name="charting.axisY2.scale">inherit</option>
+        <option name="charting.chart">line</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">gaps</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">default</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.drilldown">all</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.placement">right</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>來源IP分布圖</title>
+      <chart>
+        <search>
+          <query>index=summary_som_fw src=$src_ip$ dest=$dest_ip$ $action$ 
+| lookup soc_ip_zone_lookup ip_cidr as src ,customer_name as customer_name OUTPUT ip_zone as src_ip_zone 
+| lookup soc_ip_zone_lookup ip_cidr as dest ,customer_name as customer_name OUTPUT ip_zone as dest_ip_zone 
+| eval src_ip_zone=case(isnotnull(src_ip_zone),src_ip_zone,isnull(src_ip_zone) AND cidrmatch("0.0.0.0/32",src),"Private",isnull(src_ip_zone) AND cidrmatch("10.0.0.0/8",src),"Private",isnull(src_ip_zone) AND cidrmatch("172.16.0.0/12",src),"Private",isnull(src_ip_zone) AND cidrmatch("192.168.0.0/16",src),"Private",isnull(src_ip_zone),"Internet") 
+| eval dest_ip_zone=case(isnotnull(dest_ip_zone),dest_ip_zone,isnull(dest_ip_zone) AND cidrmatch("0.0.0.0/32",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("10.0.0.0/8",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("172.16.0.0/12",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("192.168.0.0/16",dest),"Private",isnull(dest_ip_zone),"Internet")
+| search src_ip_zone=$src_zone$ AND dest_ip_zone=$dest_zone$
+| eval dest_ip_zone=case(isnotnull(dest_ip_zone),dest_ip_zone,isnull(dest_ip_zone) AND cidrmatch("0.0.0.0/32",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("10.0.0.0/8",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("172.16.0.0/12",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("192.168.0.0/16",dest),"Private",isnull(dest_ip_zone),"Internet")
+| top 10 src</query>
+          <earliest>$time_picker.earliest$</earliest>
+          <latest>$time_picker.latest$</latest>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.visibility">visible</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.enabled">0</option>
+        <option name="charting.axisY2.scale">inherit</option>
+        <option name="charting.chart">pie</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">gaps</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">default</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.drilldown">all</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.placement">right</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+    <panel>
+      <title>目的IP分布圖</title>
+      <chart>
+        <search>
+          <query>index=summary_som_fw src=$src_ip$ dest=$dest_ip$ $action$ 
+| lookup soc_ip_zone_lookup ip_cidr as src ,customer_name as customer_name OUTPUT ip_zone as src_ip_zone 
+| lookup soc_ip_zone_lookup ip_cidr as dest ,customer_name as customer_name OUTPUT ip_zone as dest_ip_zone 
+| eval src_ip_zone=case(isnotnull(src_ip_zone),src_ip_zone,isnull(src_ip_zone) AND cidrmatch("0.0.0.0/32",src),"Private",isnull(src_ip_zone) AND cidrmatch("10.0.0.0/8",src),"Private",isnull(src_ip_zone) AND cidrmatch("172.16.0.0/12",src),"Private",isnull(src_ip_zone) AND cidrmatch("192.168.0.0/16",src),"Private",isnull(src_ip_zone),"Internet") 
+| eval dest_ip_zone=case(isnotnull(dest_ip_zone),dest_ip_zone,isnull(dest_ip_zone) AND cidrmatch("0.0.0.0/32",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("10.0.0.0/8",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("172.16.0.0/12",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("192.168.0.0/16",dest),"Private",isnull(dest_ip_zone),"Internet")
+| search src_ip_zone=$src_zone$ AND dest_ip_zone=$dest_zone$
+| eval dest_ip_zone=case(isnotnull(dest_ip_zone),dest_ip_zone,isnull(dest_ip_zone) AND cidrmatch("0.0.0.0/32",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("10.0.0.0/8",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("172.16.0.0/12",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("192.168.0.0/16",dest),"Private",isnull(dest_ip_zone),"Internet")
+| top 10 dest</query>
+          <earliest>$time_picker.earliest$</earliest>
+          <latest>$time_picker.latest$</latest>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.visibility">visible</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.enabled">0</option>
+        <option name="charting.axisY2.scale">inherit</option>
+        <option name="charting.chart">pie</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">gaps</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">default</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.drilldown">all</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.placement">right</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>詳細資訊</title>
+      <table>
+        <search>
+          <query>index=summary_som_fw  src=$src_ip$ dest=$dest_ip$  $action$ 
+| lookup soc_ip_zone_lookup ip_cidr as src ,customer_name as customer_name OUTPUT ip_zone as src_ip_zone 
+| lookup soc_ip_zone_lookup ip_cidr as dest ,customer_name as customer_name OUTPUT ip_zone as dest_ip_zone 
+| eval src_ip_zone=case(isnotnull(src_ip_zone),src_ip_zone,isnull(src_ip_zone) AND cidrmatch("0.0.0.0/32",src),"Private",isnull(src_ip_zone) AND cidrmatch("10.0.0.0/8",src),"Private",isnull(src_ip_zone) AND cidrmatch("172.16.0.0/12",src),"Private",isnull(src_ip_zone) AND cidrmatch("192.168.0.0/16",src),"Private",isnull(src_ip_zone),"Internet") 
+| eval dest_ip_zone=case(isnotnull(dest_ip_zone),dest_ip_zone,isnull(dest_ip_zone) AND cidrmatch("0.0.0.0/32",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("10.0.0.0/8",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("172.16.0.0/12",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("192.168.0.0/16",dest),"Private",isnull(dest_ip_zone),"Internet")
+| search src_ip_zone=$src_zone$ AND dest_ip_zone=$dest_zone$
+| eval dest_ip_zone=case(isnotnull(dest_ip_zone),dest_ip_zone,isnull(dest_ip_zone) AND cidrmatch("0.0.0.0/32",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("10.0.0.0/8",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("172.16.0.0/12",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("192.168.0.0/16",dest),"Private",isnull(dest_ip_zone),"Internet")
+| bucket _time bins=50 
+| fillnull rule_id src_country value="-" 
+| stats sum(raw_count) as count, values(dest_port) as dest_port by _time, src, dest, action, rule_id 
+| eval dest_port=mvjoin(dest_port, ";") 
+| eval dest_port=if(len(dest_port)&gt;20, substr(dest_port, 1, 20)."...", dest_port) 
+| iplocation src 
+| eval src_country=if(isnotnull(Country),Country,src_country) 
+| table _time, src, src_country, dest, dest_port, action, rule_id, count</query>
+          <earliest>$time_picker.earliest$</earliest>
+          <latest>$time_picker.latest$</latest>
+        </search>
+        <option name="count">20</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">cell</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+</form>

@@ -1,0 +1,172 @@
+<form>
+  <label>防火牆DDoS</label>
+  <search id="Base_Search" ref="Scheduled_Report">
+    <query>index=summary_som_fw src=$src$
+| lookup soc_ip_zone_lookup ip_cidr as src OUTPUT ip_zone as src_ip_zone 
+| lookup soc_ip_zone_lookup ip_cidr as src OUTPUT ip_zone as dest_ip_zone 
+| eval src_ip_zone=case(isnotnull(src_ip_zone),src_ip_zone,isnull(src_ip_zone) AND cidrmatch("10.0.0.0/8",src),"Private",isnull(src) AND cidrmatch("172.16.0.0/12",src),"Private",isnull(src_ip_zone) AND cidrmatch("192.168.0.0/16",src),"Private",isnull(src_ip_zone),"Internet") 
+| eval dest_ip_zone=case(isnotnull(dest_ip_zone),dest_ip_zone,isnull(dest_ip_zone) AND cidrmatch("10.0.0.0/8",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("172.16.0.0/12",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("192.168.0.0/16",dest),"Private",isnull(dest_ip_zone),"Internet") 
+| where src_ip_zone="Internet" 
+| stats sum(bytes_in) as bytes_in by _time src 
+| sort 0 - _time - bytes_in 
+| streamstats count as rank by _time</query>
+    <earliest>-60m</earliest>
+    <latest>now</latest>
+  </search>
+  <search id="Base10min_Search">
+    <query>index=* tag=fw src=$src$
+| lookup soc_ip_zone_lookup ip_cidr as src OUTPUT ip_zone as src_ip_zone 
+| lookup soc_ip_zone_lookup ip_cidr as src OUTPUT ip_zone as dest_ip_zone 
+| eval src_ip_zone=case(isnotnull(src_ip_zone),src_ip_zone,isnull(src_ip_zone) AND cidrmatch("10.0.0.0/8",src),"Private",isnull(src) AND cidrmatch("172.16.0.0/12",src),"Private",isnull(src_ip_zone) AND cidrmatch("192.168.0.0/16",src),"Private",isnull(src_ip_zone),"Internet") 
+| eval dest_ip_zone=case(isnotnull(dest_ip_zone),dest_ip_zone,isnull(dest_ip_zone) AND cidrmatch("10.0.0.0/8",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("172.16.0.0/12",dest),"Private",isnull(dest_ip_zone) AND cidrmatch("192.168.0.0/16",dest),"Private",isnull(dest_ip_zone),"Internet") 
+| where src_ip_zone="Internet" 
+| fillnull value=0 bytes_in 
+| stats sum(bytes_in) as bytes_in by src 
+| sort 0 - bytes_in</query>
+    <earliest>-10m</earliest>
+    <latest>now</latest>
+  </search>
+  <fieldset submitButton="true" autoRun="true">
+    <input type="text" token="src">
+      <label>SourceIP</label>
+      <default>*</default>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <title>最近 10 分鐘內 TOP 20 來源IP</title>
+      <table>
+        <search base="Base10min_Search">
+          <query>| where bytes_in!=0   | eval MB_in = round(bytes_in/1024/1024,2)|sort 20 - MB_in | fields - bytes_in</query>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">row</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>最近 60 分鐘連線趨勢</title>
+      <chart>
+        <search base="Base_Search">
+          <query>eval MB_in = round(bytes_in/1024/1024,2)| timechart sum(MB_in) as MB_in</query>
+        </search>
+        <option name="wrap">true</option>
+        <option name="rowNumbers">false</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="count">50</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.visibility">visible</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.enabled">false</option>
+        <option name="charting.axisY2.scale">inherit</option>
+        <option name="charting.chart">line</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">connect</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">default</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.drilldown">all</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.placement">right</option>
+      </chart>
+    </panel>
+    <panel>
+      <title>最近 60 分鐘內TOP 10 來源IP_總流量</title>
+      <chart>
+        <search base="Base_Search">
+          <query>| where rank&lt;=20 
+| eval MB_in = round(bytes_in/1024/1024,2) 
+| eventstats dc(_time) as times_bySrc, avg(rank) as avg_rank by src 
+| stats sum(MB_in) as MB_in by src</query>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.visibility">visible</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.enabled">0</option>
+        <option name="charting.axisY2.scale">inherit</option>
+        <option name="charting.chart">pie</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">gaps</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">default</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.drilldown">all</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.placement">right</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+    <panel>
+      <title>最近 60 分鐘內TOP 10 來源IP_總流量趨勢(5min)</title>
+      <chart>
+        <search base="Base_Search">
+          <query>| where rank&lt;=10 
+| eval MB_in = round(bytes_in/1024/1024,2) 
+| eventstats dc(_time) as times_bySrc, avg(rank) as avg_rank by src 
+| timechart max(MB_in) as MB_in by src limit=10</query>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.visibility">visible</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.enabled">0</option>
+        <option name="charting.axisY2.scale">inherit</option>
+        <option name="charting.chart">line</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">gaps</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">default</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.drilldown">all</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.placement">right</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>最近 60 分鐘內每五分鐘TOP 20 來源IP</title>
+      <table>
+        <title>※avg_rank為單一來源IP在12個時間區間流量平均排行；times_bySrc為單一來源IP共計有幾次進入排行榜</title>
+        <search base="Base_Search">
+          <query>| where rank&lt;=20 
+| eval MB_in = round(bytes_in/1024/1024,2) 
+| fields - bytes_in 
+| eventstats dc(_time) as times_bySrc, avg(rank) as avg_rank by src</query>
+        </search>
+        <option name="count">20</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">row</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+</form>

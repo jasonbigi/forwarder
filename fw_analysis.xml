@@ -1,0 +1,214 @@
+<form>
+  <label>重要主機連線行為模式分析</label>
+  <search id="base1">
+    <query>
+      <![CDATA[index=summary_som_fw dest_ip=$dest_ip$ earliest=-24h@h latest=@h
+| where cidrmatch("$cidr$",dest_ip) 
+| timechart span=1h sum(count) as src_count 
+| streamstats time_window=24h current=true avg("src_count") as avg stdev("src_count") as stdev 
+| eval lowerBound=round((avg-stdev*exact(2)),0), upperBound=round((avg+stdev*exact(2)),0) 
+| eval isOutlier=if(src_count > upperBound, 1, 0) ]]>
+    </query>
+    <done>
+      <set token="subsearch_1">$job.sid$</set>
+    </done>
+ </search>
+ <search id="base2">
+    <query>
+      <![CDATA[index=summary_som_fw dest_ip=$dest_ip$ earliest=-24h@h latest=@h
+| where cidrmatch("$cidr$",dest_ip)
+| eval MB=round((bytes_in+bytes_out)/(1024*1024),2) 
+| timechart span=1h sum(MB) as total_MB 
+| streamstats time_window=24h current=true avg("total_MB") as avg stdev("total_MB") as stdev 
+| eval lowerBound=(avg-stdev*exact(2)), upperBound=round((avg+stdev*exact(2)),2) 
+| eval isOutlier=if(total_MB > upperBound, 1, 0) ]]>
+    </query>
+    <done>
+      <set token="subsearch_2">$job.sid$</set>
+    </done>
+ </search>
+ <search id="base3">
+    <query>
+      <![CDATA[index=summary_som_fw dest_ip=$dest_ip$ earliest=-24h@h latest=@h
+| where cidrmatch("$cidr$",dest_ip)
+| timechart span=1h dc(src_ip) as ip_count 
+| streamstats time_window=24h current=true avg("ip_count") as avg stdev("ip_count") as stdev 
+| eval lowerBound=(avg-stdev*exact(2)), upperBound=round((avg+stdev*exact(2)),0) 
+| eval isOutlier=if(ip_count > upperBound, 1,0 ) ]]>
+    </query>
+    <done>
+      <set token="subsearch_3">$job.sid$</set>
+    </done>
+ </search>
+  <fieldset submitButton="false" autoRun="false">
+    <input type="text" token="cidr">
+      <label>網段</label>
+      <default>0.0.0.0/0</default>
+      <initialValue>0.0.0.0/0</initialValue>
+    </input>
+    <input type="text" token="dest_ip">
+      <label>主機IP</label>
+      <default>*</default>
+      <initialValue>*</initialValue>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <title>連線異常狀況</title>
+      <table>
+        <search>
+          <query>| loadjob $subsearch_3$ 
+| search isOutlier=1 
+| eval "描述"="一小時內共計".ip_count."個不同來源IP連線，正常行為下此時段應低於".upperBound."個" 
+| eval "異常情形"="過多的不同來源IP連線" 
+| fields _time "異常情形" "描述" 
+| append 
+    [ | loadjob $subsearch_2$ 
+    | search isOutlier=1 
+    | eval "描述"= "一小時內流量共計".total_MB."MB，正常行為下此時段應低於".upperBound."MB" 
+    | eval "異常情形"="流量過多" 
+    | fields _time "異常情形" "描述" ] 
+| append 
+    [ | loadjob $subsearch_1$ 
+    | search isOutlier=1 
+    | eval "描述"="一小時內共計".src_count."次連線，正常行為下此時段應低於".upperBound."次" 
+    | eval "異常情形"="過多的連線"
+    | fields _time "異常情形" "描述" ]
+          </query>
+          <done>
+             <set token="subsearch_4">$job.sid$</set>
+          </done>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="count">100</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>來源IP連線次數分析</title>
+      <input type="dropdown" token="time1">
+        <label>time</label>
+        <fieldForLabel>time1</fieldForLabel>
+        <fieldForValue>time1</fieldForValue>
+        <search>
+          <query>| loadjob $subsearch_4$ | eval time1=strftime(_time,"%Y/%m/%d %H:%M")
+| table time1</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+      </input>
+      <table>
+        <search>
+          <query>index=summary_som_fw dest_ip=$dest_ip$
+| where cidrmatch("$cidr$",dest_ip)
+| bucket _time span=1h 
+| eval time=strftime(_time,"%Y/%m/%d %H:%M") 
+| search time="$time1$" 
+| top 10 src_ip</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="count">10</option>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+    <panel>
+      <title>來源IP流量分析</title>
+      <input type="dropdown" token="time2">
+        <label>time</label>
+        <fieldForLabel>time2</fieldForLabel>
+        <fieldForValue>time2</fieldForValue>
+        <search>
+          <query>| loadjob $subsearch_4$ | eval time2=strftime(_time,"%Y/%m/%d %H:%M")
+| table time2</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+      </input>
+      <table>
+        <search>
+          <query>index=summary_som_fw dest_ip=$dest_ip$
+| where cidrmatch("$cidr$",dest_ip)
+| bucket _time span=1h 
+| eval time=strftime(_time,"%Y/%m/%d %H:%M") 
+| search time="$time2$" 
+| eval MB=round((bytes_in+bytes_out)/(1024*1024),2), MB_in=round(bytes_in/(1024*1024),2),MB_out=round(bytes_out/(1024*1024),2) 
+| stats sum(MB) as total_MB, sum(MB_in) as MB_in, sum(MB_out) as MB_out by src_ip 
+| sort 10 - total_MB
+| fillnull value=0 MB_in, MB_out</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="count">100</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>連線次數之行為模式分析</title>
+      <viz type="Splunk_ML_Toolkit.OutliersViz">
+        <search base="base1">
+          <query>
+| fields _time, "src_count", lowerBound, upperBound, isOutlier, *</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="trellis.enabled">0</option>
+        <option name="trellis.scales.shared">1</option>
+        <option name="trellis.size">medium</option>
+      </viz>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>每小時流量之行為模式分析</title>
+      <viz type="Splunk_ML_Toolkit.OutliersViz">
+        <search base="base2">
+          <query> 
+| fields _time, "total_MB", lowerBound, upperBound, isOutlier, *</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="trellis.enabled">0</option>
+        <option name="trellis.scales.shared">1</option>
+        <option name="trellis.size">medium</option>
+      </viz>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>不同來源IP個數之行為模式分析</title>
+      <viz type="Splunk_ML_Toolkit.OutliersViz">
+        <search base="base3">
+         <query>
+| fields _time, "ip_count", lowerBound, upperBound, isOutlier, *</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="trellis.enabled">0</option>
+        <option name="trellis.scales.shared">1</option>
+        <option name="trellis.size">medium</option>
+      </viz>
+    </panel>
+  </row>
+</form>
