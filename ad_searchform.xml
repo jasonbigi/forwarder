@@ -1,0 +1,114 @@
+<form theme="light">
+  <label>AD Log查詢</label>
+  <fieldset submitButton="true" autoRun="true">
+    <input type="time" token="time_picker">
+      <label>時間</label>
+      <default>
+        <earliest>-4h@m</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+    <input type="dropdown" token="raw_event_id">
+      <label>事件識別碼</label>
+      <default>*</default>
+      <initialValue>*</initialValue>
+      <choice value="*">ALL</choice>
+      <fieldForLabel>raw_event_id</fieldForLabel>
+      <fieldForValue>raw_event_id</fieldForValue>
+      <search>
+        <query>index=*msad  earliest=$time_picker.earliest$ latest=$time_picker.latest$
+| dedup raw_event_id 
+| table raw_event_id</query>
+        <earliest>-15m</earliest>
+        <latest>now</latest>
+      </search>
+    </input>
+    <input type="text" token="src">
+      <label>來源IP</label>
+      <default>*</default>
+      <initialValue>*</initialValue>
+    </input>
+    <input type="text" token="src_user">
+      <label>來源帳戶</label>
+      <default>*</default>
+      <initialValue>*</initialValue>
+    </input>
+    <input type="text" token="computer_name">
+      <label>主機名稱</label>
+      <choice value="*">ALL</choice>
+      <default>*</default>
+      <initialValue>*</initialValue>
+      <fieldForLabel>computer_name</fieldForLabel>
+      <fieldForValue>computer_name</fieldForValue>
+    </input>
+    <input type="dropdown" token="src_zone">
+      <label>來源網域</label>
+      <choice value="*">ALL</choice>
+      <default>*</default>
+      <initialValue>*</initialValue>
+      <fieldForLabel>src_zone</fieldForLabel>
+      <fieldForValue>src_zone</fieldForValue>
+      <search>
+        <query>index=*msad  earliest=$time_picker.earliest$ latest=$time_picker.latest$
+| dedup src_zone 
+| table src_zone</query>
+        <earliest>-15m</earliest>
+        <latest>now</latest>
+      </search>
+    </input>
+    <input type="dropdown" token="logon_type">
+      <label>登入類型</label>
+      <fieldForLabel>logon_type</fieldForLabel>
+      <fieldForValue>logon_type</fieldForValue>
+      <search>
+        <query>index=*msad  earliest=$time_picker.earliest$ latest=$time_picker.latest$
+| dedup logon_type 
+| table logon_type</query>
+        <earliest>-15m</earliest>
+        <latest>now</latest>
+      </search>
+      <default>*</default>
+      <choice value="*">ALL</choice>
+      <initialValue>*</initialValue>
+    </input>
+    <input type="dropdown" token="signature">
+      <label>事件名稱</label>
+      <choice value="*">ALL</choice>
+      <default>*</default>
+      <initialValue>*</initialValue>
+      <fieldForLabel>signature</fieldForLabel>
+      <fieldForValue>signature</fieldForValue>
+      <search>
+        <query>index=*msad  earliest=$time_picker.earliest$ latest=$time_picker.latest$
+| dedup signature 
+| table signature</query>
+        <earliest>-15m</earliest>
+        <latest>now</latest>
+      </search>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <table>
+        <search>
+          <query>index=*msad 
+| fillnull value="NULL" raw_event_id src src_user computer_name src_zone logon_type signature 
+| search raw_event_id=$raw_event_id$ src=$src$ src_user=$src_user$ computer_name=$computer_name$ src_zone=$src_zone$ logon_type=$logon_type$ signature="$signature$" 
+| table _time raw_event_id src src_user computer_name src_zone logon_type signature 
+| rename raw_event_id as "事件識別碼", src as "來源IP", src_user as "來源帳戶", computer_name as "主機名稱", src_zone as "來源網域", logon_type as "登入類型", signature as "事件名稱"</query>
+          <earliest>$time_picker.earliest$</earliest>
+          <latest>$time_picker.latest$</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="count">50</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">cell</option>
+        <option name="percentagesRow">false</option>
+        <option name="refresh.display">preview</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">false</option>
+      </table>
+    </panel>
+  </row>
+</form>
