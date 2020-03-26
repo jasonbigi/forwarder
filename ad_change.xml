@@ -1,0 +1,338 @@
+<form>
+  <label>作業系統_帳戶異動儀表版</label>
+  <search id="account_change">
+    <query>
+     <![CDATA[index=*msad sourcetype=windows:ad:os raw_event_id=4738 
+| search NOT 
+    [ search 
+        index=*msad sourcetype=windows:ad:os (raw_event_id=4738 OR raw_event_id=4720) 
+    | transaction maxspan=1s startswith=4720 endswith=4738 
+    | fields _time user] 
+| append 
+    [ search 
+        index=*msad sourcetype=windows:ad:os (raw_event_id=4720 OR raw_event_id=4725 OR raw_event_id=4726 ) ] 
+| rex max_match=2 field=_raw "安全性識別碼:\s+(?<id>[^\s]+)" 
+| eval id=if(mvcount(id)>1,mvindex(id,1),id)  
+| fields _time src_zone user src_user raw_event_id signature id]]>
+    </query>
+    <earliest>$time1.earliest$</earliest>
+    <latest>$time1.latest$</latest>
+  </search>
+  <search base="account_change">
+    <query>| search raw_event_id=4738 
+| stats values(id) as id 
+| eval id=mvjoin(id,"\" OR \"") 
+| eval id="\"".id."\""
+    </query>
+    <done>
+      <set token="id">$result.id$</set>
+    </done>
+  </search>
+  <search id="group_account_change">
+    <query>
+     <![CDATA[index=*msad sourcetype=windows:ad:os ( raw_event_id=4728 OR raw_event_id=4732 OR raw_event_id=4756 ) OR ( raw_event_id=4729 OR raw_event_id=4733 OR raw_event_id=4757 ) 
+| eval Operation=case(( raw_event_id=4728 OR raw_event_id=4732 OR raw_event_id=4756 ),"Members Added",( raw_event_id=4729 OR raw_event_id=4733 OR raw_event_id=4757 ),"Members Removed") 
+| fields _time group_name  src_zone user src_user raw_event_id signature]]>
+    </query>
+    <earliest>$time2.earliest$</earliest>
+    <latest>$time2.latest$</latest>
+  </search>
+  <search id="group_change">
+    <query>
+     <![CDATA[index=*msad sourcetype=windows:ad:os (  ( raw_event_id=4727 OR raw_event_id=4731 OR raw_event_id=4754 ) OR ( raw_event_id=4730 OR raw_event_id=4734 OR raw_event_id=4758 ) )  
+| eval Operation=case(( raw_event_id=4728 OR raw_event_id=4732 OR raw_event_id=4756 ),"Members Added",( raw_event_id=4729 OR raw_event_id=4733 OR raw_event_id=4757 ),"Members Removed",( raw_event_id=4727 OR raw_event_id=4731 OR raw_event_id=4754 ),"Groups Created",( raw_event_id=4730 OR raw_event_id=4734 OR raw_event_id=4758 ),"Groups Deleted",raw_event_id==4764,"Type/Scope Change",( raw_event_id=4735 OR raw_event_id=4737 OR raw_event_id=4755 ),"Groups Changed") |eval src_zone=coalesce(src_zone,src_zone2), src_user=coalesce(src_user,user,src_host)| rex max_match=2 field=_raw "安全性識別碼:\s+(?<id>[^\s]+)" 
+| eval id=if(mvcount(id)>1,mvindex(id,1),id) 
+|table _time group_name src_zone  src_user raw_event_id signature]]>
+    </query>
+    <earliest>$time3.earliest$</earliest>
+    <latest>$time3.latest$</latest>
+  </search>
+  <search>
+    <query>
+      <![CDATA[index=*msad sourcetype=windows:ad:os (( raw_event_id=4735 OR raw_event_id=4737 OR raw_event_id=4755 ) OR raw_event_id=4764 ) 
+| eval Operation=case(( raw_event_id=4728 OR raw_event_id=4732 OR raw_event_id=4756 ),"Members Added",( raw_event_id=4729 OR raw_event_id=4733 OR raw_event_id=4757 ),"Members Removed",( raw_event_id=4727 OR raw_event_id=4731 OR raw_event_id=4754 ),"Groups Created",( raw_event_id=4730 OR raw_event_id=4734 OR raw_event_id=4758 ),"Groups Deleted",raw_event_id==4764,"Type/Scope Change",( raw_event_id=4735 OR raw_event_id=4737 OR raw_event_id=4755 ),"Groups Changed") 
+| stats values(group_name) as group_name
+| eval group_name=mvjoin(group_name,"\" OR \"") 
+| eval group_name="\"".group_name."\""]]>
+    </query>
+    <earliest>$time3.earliest$</earliest>
+    <latest>$time3.latest$</latest>
+    <done>
+      <set token="group_name">$result.group_name$</set>
+    </done>
+  </search>
+  <fieldset submitButton="false"></fieldset>
+  <row>
+    <panel>
+      <title>帳號異動（新增、刪除、停用、變更）註：Windows EventID:4738 帳號變更 會將該帳號變更變更之行為一併列出</title>
+      <input type="time" token="time1">
+        <label>時間範圍</label>
+        <default>
+          <earliest>-4h@m</earliest>
+          <latest>now</latest>
+        </default>
+      </input>
+      <input type="text" token="domain1">
+        <label>網域</label>
+        <default>*</default>
+        <initialValue>*</initialValue>
+      </input>
+      <input type="text" token="user1">
+        <label>異動帳號</label>
+        <default>*</default>
+        <initialValue>*</initialValue>
+      </input>
+      <input type="text" token="src_user1">
+        <label>操作者帳號</label>
+        <default>*</default>
+        <initialValue>*</initialValue>
+      </input>
+      <input type="dropdown" token="raw_event_id1">
+        <label>事件名稱</label>
+        <choice value="*">ALL</choice>
+        <choice value="4720">4720：帳號新增</choice>
+        <choice value="4725">4725：帳號停用</choice>
+        <choice value="4726">4726：帳號刪除</choice>
+        <choice value="4738">4738：帳號變更</choice>
+        <default>*</default>
+        <initialValue>*</initialValue>
+      </input>
+      <table>
+        <search base="account_change">
+          <query>| search src_zone=$domain1$ user=$user1$ src_user="$src_user1$" raw_event_id=$raw_event_id1$ 
+| search raw_event_id!=4738 
+| eval message=raw_event_id."：".signature 
+| table _time src_zone user src_user message 
+| append 
+    [ search index=*msad sourcetype=windows:ad:os $id$ 
+    | eval user=coalesce(user,src_user) 
+    | eval match="$raw_event_id1$" 
+    | where match=4738 OR match="*" 
+    | fields _time src_zone user src_user signature raw_event_id 
+    | rex max_match=2 field=_raw "安全性識別碼:\s+(?&lt;id&gt;[^\s]+)" 
+    | eval id=if(mvcount(id)&gt;1,mvindex(id,1),id) 
+    | eval message=raw_event_id."：".signature, src_user=if(isnull(user),"",src_user) 
+    | transaction id maxspan=3s 
+    | where like(raw_event_id,"%4738%") 
+    | where (src_user like "$src_user1$" OR len("$src_user1$")=1) AND (user like "$user1$" OR len("$user1$")=1) AND (src_zone like "$domain1$" OR len("$domain1$")=1) 
+    | table _time src_zone user src_user message ] 
+| sort - _time 
+| rename src_zone as "帳戶網域", user as "異動帳號", src_user as "操作者帳號", message as "事件名稱"</query>
+        </search>
+        <option name="count">10</option>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
+        <title>Top user</title>
+        <search base="account_change">
+          <query>|top user</query>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.visibility">visible</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.abbreviation">none</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.abbreviation">none</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.abbreviation">none</option>
+        <option name="charting.axisY2.enabled">0</option>
+        <option name="charting.axisY2.scale">inherit</option>
+        <option name="charting.chart">pie</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">gaps</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">default</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.mode">standard</option>
+        <option name="charting.legend.placement">right</option>
+        <option name="charting.lineWidth">2</option>
+        <option name="height">257</option>
+        <option name="trellis.enabled">0</option>
+        <option name="trellis.scales.shared">1</option>
+        <option name="trellis.size">medium</option>
+      </chart>
+    </panel>
+    <panel>
+      <chart>
+        <title>Rare user</title>
+        <search base="account_change">
+          <query>|  rare user</query>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.visibility">visible</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.abbreviation">none</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.abbreviation">none</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.abbreviation">none</option>
+        <option name="charting.axisY2.enabled">0</option>
+        <option name="charting.axisY2.scale">inherit</option>
+        <option name="charting.chart">pie</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">gaps</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">default</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.mode">standard</option>
+        <option name="charting.legend.placement">right</option>
+        <option name="charting.lineWidth">2</option>
+        <option name="trellis.enabled">0</option>
+        <option name="trellis.scales.shared">1</option>
+        <option name="trellis.size">medium</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>群組成員異動（新增／刪除成員）</title>
+      <input type="time" token="time2">
+        <label>時間範圍</label>
+        <default>
+          <earliest>-4h@m</earliest>
+          <latest>now</latest>
+        </default>
+      </input>
+      <input type="text" token="group_name2">
+        <label>群組名稱</label>
+        <default>*</default>
+        <initialValue>*</initialValue>
+      </input>
+      <input type="text" token="domain2">
+        <label>網域</label>
+        <default>*</default>
+        <initialValue>*</initialValue>
+      </input>
+      <input type="text" token="user2">
+        <label>異動帳號</label>
+        <default>*</default>
+        <initialValue>*</initialValue>
+      </input>
+      <input type="text" token="src_user2">
+        <label>操作者帳號</label>
+        <default>*</default>
+        <initialValue>*</initialValue>
+      </input>
+      <input type="dropdown" token="raw_event_id2">
+        <label>事件名稱</label>
+        <choice value="*">ALL</choice>
+        <choice value="4728">4728：帳號新增至global group</choice>
+        <choice value="4732">4732：帳號新增至local group</choice>
+        <choice value="4756">4756：帳號新增至universal group</choice>
+        <choice value="4729">4729：帳號從global group移除</choice>
+        <choice value="4733">4733：帳號從local group移除</choice>
+        <choice value="4757">4757：帳號從universal group移除</choice>
+        <default>*</default>
+        <initialValue>*</initialValue>
+      </input>
+      <table>
+        <search base="group_account_change">
+          <query>| search group_name=$group_name2$ src_zone=$domain2$ user=$user2$ src_user=$src_user2$ raw_event_id=$raw_event_id2$ 
+| eval message=raw_event_id."：".signature 
+| table _time group_name src_zone user src_user message 
+| rename group_name as "群組名稱", src_zone as "帳戶網域", user as "異動帳號", src_user as "操作者帳號", message as "事件名稱"</query>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>群組異動（新增／刪除／變更群組）</title>
+      <input type="time" token="time3">
+        <label>時間範圍</label>
+        <default>
+          <earliest>-4h@m</earliest>
+          <latest>now</latest>
+        </default>
+      </input>
+      <input type="text" token="group_name3">
+        <label>群組名稱</label>
+        <default>*</default>
+        <initialValue>*</initialValue>
+      </input>
+      <input type="text" token="domain3">
+        <label>網域</label>
+        <default>*</default>
+        <initialValue>AD</initialValue>
+      </input>
+      <input type="text" token="src_user3">
+        <label>操作者帳號</label>
+        <default>*</default>
+        <initialValue>*</initialValue>
+      </input>
+      <input type="dropdown" token="raw_event_id3">
+        <label>事件名稱</label>
+        <choice value="*">ALL</choice>
+        <choice value="4727">4727：創建global group</choice>
+        <choice value="4731">4731：創建local group</choice>
+        <choice value="4754">4754：創建universal group</choice>
+        <choice value="4730">4730：移除global group</choice>
+        <choice value="4734">4734：移除local group</choice>
+        <choice value="4758">4758：移除universal group</choice>
+        <choice value="4735">4735：變更global group</choice>
+        <choice value="4737">4737：變更local group</choice>
+        <choice value="4755">4755：變更universal group</choice>
+        <choice value="4764">4764：群組類型已變更</choice>
+        <default>*</default>
+        <initialValue>*</initialValue>
+      </input>
+      <table>
+        <search base="group_change">
+          <query>| search group_name=$group_name3$ src_zone=$domain3$ src_user=$src_user3$ raw_event_id=$raw_event_id3$ 
+| eval message=raw_event_id."：".signature 
+| table _time group_name src_zone src_user message 
+| append 
+    [ search index=*msad sourcetype=windows:ad:os $group_name$ 
+    | eval match="$raw_event_id3$" 
+    | where match=4735 OR match=4737 OR match=4755 OR match=4764 OR match="*" 
+    | eval src_zone=coalesce(src_zone,src_zone2), src_user=coalesce(src_user,user,src_host) 
+    | eval message=raw_event_id."：".signature 
+    | transaction group_name maxspan=3s 
+    | where like(raw_event_id,"%4735%") OR like(raw_event_id,"%4737%") OR like(raw_event_id,"%4755%") OR like(raw_event_id,"%4764%") 
+    | where (src_user like "$src_user3$" OR len("$src_user3$")=1) AND (group_name like "$group_name3$" OR len("$group_name3$")=1) AND (src_zone like "$domain3$" OR len("$domain3$")=1) AND (raw_event_id like "$raw_event_id3$" OR len("$raw_event_id3$")=1)
+    | table _time group_name src_zone src_user message] 
+| rename group_name as "群組名稱", src_zone as "帳戶網域", src_user as "操作者帳號", message as "事件名稱"</query>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+</form>
